@@ -1,7 +1,7 @@
 // פותח מהזיכרון מיד (עובד גם בלי קליטה), ומעדכן ברקע.
 // מעלים את CACHE בכל שינוי בקבצים, כדי שהטלפון יוריד גרסה שלמה ואחידה.
-const CACHE = 'savav-v3';
-const FILES = ['./', 'index.html', 'app.js', 'fitness.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'savav-v4';
+const FILES = ['./', 'index.html', 'app.js', 'fitness.js', 'learn.js', 'progress.js', 'bot.js', 'calendar.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   // cache: 'reload' עוקף את זיכרון הדפדפן, אחרת אפשר לקבל קובץ ישן לצד קובץ חדש

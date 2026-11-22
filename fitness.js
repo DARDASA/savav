@@ -1,4 +1,4 @@
-// תוכנית הכושר: איזה אימון היום, ומה כתוב בו. נטען לפני app.js ומשתמש בפונקציות שלו בזמן ריצה.
+// כושר: איזה אימון היום, מה כתוב בו, רישום הישגים ומסך הכושר. נטען אחרי app.js.
 // shortcut: תוכן התוכנית בעברית בלבד, לתרגם אם תשתמש בממשק באנגלית
 const BASELINE = { pullup: { kg: 15, reps: 8 }, bench: { kg: 60, reps: 18 }, run3k: { sec: 690 } }; // מלפני 3 חודשים, עד המבחן הראשון
 const STRENGTH = ['A', 'B', 'test', 'exam']; // אחרי אלה לא עושים כוח למחרת
@@ -73,7 +73,7 @@ function workoutDef(id, date) {
         'משיכת פנים עם גומייה 3×15', 'סקוואט בולגרי בלי משקל 3×12 לכל רגל', "הולו הולד 3×30 שנ'"],
       min: 'מתח שלילי 2×3 + שכיבות סמיכה 2 סטים',
     },
-    easy: { t: 'ריצה קלה', items: ["20–25 דק' בקצב שבו אפשר לדבר", 'אחרי: מתיחות ירך ותאומים'], min: "ריצה קלה 10 דק'" },
+    easy: { t: 'ריצה קלה', items: ["20 עד 25 דק' בקצב שבו אפשר לדבר", 'אחרי: מתיחות ירך ותאומים'], min: "ריצה קלה 10 דק'" },
     int: {
       t: 'ריצת אינטרוולים',
       items: ["חימום: 10 דק' ריצה קלה", `6×400 מ' ב-${mmss(latest('run3k').sec / 7.5 - 2)}, 90 שנ' הליכה בין חזרות`, "שחרור: 5 דק' הליכה"],
@@ -98,3 +98,69 @@ const recordText = r => (r.sec ? mmss(r.sec) : r.reps ? `${r.kg}×${r.reps}` : `
 console.assert(JSON.stringify(parseRecord('bench', '60x18')) === '{"kg":60,"reps":18}'
   && parseRecord('run3k', '11:30').sec === 690 && parseRecord('weight', '72.5').kg === 72.5
   && parseRecord('weight', '7') === null && parseRecord('run3k', '11') === null && mmss(690) === '11:30', 'parseRecord self-check failed');
+
+Object.assign(T.he, {
+  kg: 'ק"ג', today: 'היום', exam: 'יום בוחן', basketball: 'כדורסל', volleyball: 'כדורעף',
+  records: 'הישגים', height: 'גובה (ס"מ)', rules: 'כללי התקדמות', weighIn: 'שקילה שבועית', logRecord: 'רישום הישג',
+  protein: g => (g ? `יעד חלבון: ${g} ג'` : 'יעד חלבון (הזן משקל בכושר)'),
+  pullup: 'מתח', bench: "בנץ'", run3k: '3 ק"מ', run5k: '5 ק"מ', weight: 'משקל',
+  ask: { pullup: 'מתח: משקל נוסף וחזרות (למשל 15x8)', bench: "בנץ': משקל וחזרות (למשל 60x18)",
+    run3k: '3 ק"מ: זמן (למשל 11:30)', run5k: '5 ק"מ: זמן (למשל 21:40)', weight: 'משקל גוף בק"ג (למשל 72.5)' },
+  badValue: 'הערך לא תקין, לא נשמר.',
+  estBench: "בנץ' מקסימום משוער", estPull: 'מתח עם משקל', est3k: '3 ק"מ',
+});
+Object.assign(T.en, {
+  kg: 'kg', today: 'Today', exam: 'Test day', basketball: 'Basketball', volleyball: 'Volleyball',
+  records: 'Records', height: 'Height (cm)', rules: 'Progression rules', weighIn: 'Weekly weigh-in', logRecord: 'Log a record',
+  protein: g => (g ? `Protein target: ${g} g` : 'Protein target (log weight in Fitness)'),
+  pullup: 'Pull-ups', bench: 'Bench', run3k: '3 km', run5k: '5 km', weight: 'Weight',
+  ask: { pullup: 'Pull-ups: added kg and reps (e.g. 15x8)', bench: 'Bench: kg and reps (e.g. 60x18)',
+    run3k: '3 km: time (e.g. 11:30)', run5k: '5 km: time (e.g. 21:40)', weight: 'Body weight in kg (e.g. 72.5)' },
+  badValue: 'Invalid value, not saved.',
+  estBench: 'Bench est. max', estPull: 'Weighted pull-ups', est3k: '3 km',
+});
+
+// שואל ערך בחלון קטן ושומר הישג. ביטול = לא שומר כלום.
+function askRecord(kind) {
+  const text = prompt(t('ask')[kind]);
+  if (text === null) return;
+  const rec = parseRecord(kind, text);
+  if (!rec) return say(t('badValue'));
+  state.records.push({ date: iso(), kind, ...rec, source: 'manual' });
+}
+
+function renderFitness() {
+  const day = state.days[iso()] || {}, pu = latest('pullup');
+  $('exam').setAttribute('aria-pressed', !!day.exam);
+  $('extra').innerHTML = ['basketball', 'volleyball'].map(k =>
+    `<button data-extra="${k}" aria-pressed="${!!day.extra?.includes(k)}">${t(k)}</button>`).join('');
+  $('stats').innerHTML = [[t('estBench'), `${Math.round(oneRepMax(latest('bench')))} ${t('kg')}`],
+    [t('estPull'), `${pu.kg}×${pu.reps}`], [t('est3k'), mmss(latest('run3k').sec)]]
+    .map(([k, v]) => `<div><div class="stat">${esc(v)}</div><div class="muted">${k}</div></div>`).join('');
+  $('recButtons').innerHTML = KINDS.map(k => `<button data-rec="${k}">${t(k)}</button>`).join('');
+  if (document.activeElement !== $('height')) $('height').value = state.settings.height ?? '';
+  $('recList').innerHTML = state.records.map((r, i) => [r, i]).sort((a, b) => (a[0].date < b[0].date ? 1 : -1)).slice(0, 10)
+    .map(([r, i]) => `<li><span>${fmt(r.date)} · ${t(r.kind)} <b>${recordText(r)}</b></span>
+      <button class="ghost" data-del="${i}">${t('delete')}</button></li>`).join('') || none();
+}
+
+$('exam').onclick = () => { const d = dayOf(iso()); d.exam = !d.exam; if (!d.exam && d.w === 'exam') delete d.w; save(); render(); };
+$('extra').onclick = e => {
+  const k = e.target.dataset.extra;
+  if (!k) return;
+  const d = dayOf(iso()), x = d.extra || [];
+  d.extra = x.includes(k) ? x.filter(v => v !== k) : [...x, k];
+  save(); render();
+};
+$('recButtons').onclick = e => { const k = e.target.dataset.rec; if (k) { askRecord(k); save(); render(); } };
+$('recList').onclick = e => {
+  const i = e.target.dataset.del;
+  if (i === undefined || !confirm(t('confirmDelete'))) return;
+  state.records.splice(+i, 1); save(); render();
+};
+$('height').onchange = e => {
+  const v = Number(e.target.value);
+  if (e.target.value && !(v >= 100 && v <= 250)) { say(t('badValue')); return render(); }
+  if (e.target.value) state.settings.height = v; else delete state.settings.height;
+  save(); say(t('saved'));
+};
