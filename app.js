@@ -293,5 +293,9 @@ console.assert(addDays('2026-12-31', 1) === '2027-01-01' && daysBetween('2026-03
 render();
 showTemplate();
 document.addEventListener('visibilitychange', () => document.hidden || render()); // מתעדכן ליום חדש אחרי חצות
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if ('serviceWorker' in navigator) {
+  // כשגרסה חדשה נכנסת לתוקף, טוענים מחדש פעם אחת כדי לא להציג תערובת של גרסאות
+  if (navigator.serviceWorker.controller) navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+  navigator.serviceWorker.register('sw.js');
+}
 navigator.storage?.persist?.(); // מבקש מאנדרואיד לא למחוק את הנתונים כשהזיכרון מתמלא
