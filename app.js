@@ -1,5 +1,5 @@
 // סבב — כל הנתונים נשמרים רק במכשיר (localStorage), כאובייקט JSON אחד.
-const SCHEMA_VERSION = 1; // מעלים כשמבנה הנתונים משתנה, כדי לדעת להמיר גיבויים ישנים
+const SCHEMA_VERSION = 2; // מעלים כשמבנה הנתונים משתנה, כדי לדעת להמיר גיבויים ישנים
 const KEY = 'savav';
 const MODES = ['combat', 'base', 'training', 'home', 'leave'];
 const ARMY = ['combat', 'base', 'training'];
@@ -22,6 +22,14 @@ const T = {
     tourArmy: (n, d) => `סבב ${n} · עוד ${d} ימים הביתה`,
     tourHome: (n, k, m) => `סבב ${n} · בית, יום ${k} מתוך ${m}`,
     tourNoHome: n => `סבב ${n} · הזן תאריכי בית בהגדרות`,
+    fitness: 'כושר', today: 'היום', exam: 'יום בוחן', basketball: 'כדורסל', volleyball: 'כדורעף',
+    records: 'הישגים', height: 'גובה (ס"מ)', rules: 'כללי התקדמות', weighIn: 'שקילה שבועית',
+    protein: g => (g ? `יעד חלבון: ${g} ג'` : 'יעד חלבון (הזן משקל בכושר)'),
+    pullup: 'מתח', bench: "בנץ'", run3k: '3 ק"מ', run5k: '5 ק"מ', weight: 'משקל',
+    ask: { pullup: 'מתח: משקל נוסף וחזרות (למשל 15x8)', bench: "בנץ': משקל וחזרות (למשל 60x18)",
+      run3k: '3 ק"מ: זמן (למשל 11:30)', run5k: '5 ק"מ: זמן (למשל 21:40)', weight: 'משקל גוף בק"ג (למשל 72.5)' },
+    badValue: 'הערך לא תקין, לא נשמר.',
+    estimate: (orm, pu, run) => `בנץ' מקסימום משוער: ${orm} ק"ג · מתח: ${pu} · 3 ק"מ: ${run}`,
   },
   en: {
     appName: 'Savav', settings: 'Settings', general: 'General',
@@ -40,6 +48,14 @@ const T = {
     tourArmy: (n, d) => `Round ${n} · ${d} days to home`,
     tourHome: (n, k, m) => `Round ${n} · home, day ${k} of ${m}`,
     tourNoHome: n => `Round ${n} · add home dates in Settings`,
+    fitness: 'Fitness', today: 'Today', exam: 'Test day', basketball: 'Basketball', volleyball: 'Volleyball',
+    records: 'Records', height: 'Height (cm)', rules: 'Progression rules', weighIn: 'Weekly weigh-in',
+    protein: g => (g ? `Protein target: ${g} g` : 'Protein target (log weight in Fitness)'),
+    pullup: 'Pull-ups', bench: 'Bench', run3k: '3 km', run5k: '5 km', weight: 'Weight',
+    ask: { pullup: 'Pull-ups: added kg and reps (e.g. 15x8)', bench: 'Bench: kg and reps (e.g. 60x18)',
+      run3k: '3 km: time (e.g. 11:30)', run5k: '5 km: time (e.g. 21:40)', weight: 'Body weight in kg (e.g. 72.5)' },
+    badValue: 'Invalid value, not saved.',
+    estimate: (orm, pu, run) => `Bench est. max: ${orm} kg · Pull-ups: ${pu} · 3 km: ${run}`,
   },
 };
 
@@ -48,25 +64,19 @@ function defaultTemplates() {
   const combat = [
     task("Duolingo צרפתית 10 דק'", 'Duolingo צרפתית: שיעור אחד'),
     task("Duolingo Music 5 דק'", 'Duolingo Music: שיעור אחד'),
-    task('אימון משקל גוף (אם יש זמן)', 'סט אחד שכיבות סמיכה ומתח'),
-    task('יעד חלבון'),
   ];
-  const base = [...combat, task('אימון כוח', "אימון קצר, 20 דק'"), task('משימת שיחה בצרפתית', 'משפט אחד עם חבר')];
+  const base = [...combat, task('משימת שיחה בצרפתית', 'משפט אחד עם חבר')];
   return {
     combat, base, training: base,
     home: [
-      task('אימון כוח או ריצה', "אימון קצר, 20 דק'"),
       task('פסנתר שעה', "פסנתר 15 דק'"),
       task("צרפתית ודקדוק 30 דק'", 'Duolingo צרפתית: שיעור אחד'),
       task('פרויקט Claude שעה', "פרויקט Claude 20 דק'"),
-      task('יעד חלבון'),
     ],
     leave: [
-      task('אימון כוח או ריצה', "אימון קצר, 20 דק'"),
       task('פסנתר שעה וחצי', "פסנתר 15 דק'"),
       task("צרפתית ודקדוק 45 דק'", 'Duolingo צרפתית: שיעור אחד'),
       task('פרויקט Claude שעתיים', "פרויקט Claude 20 דק'"),
-      task('יעד חלבון'),
     ],
   };
 }
@@ -77,8 +87,9 @@ function defaultState() {
     settings: { lang: 'he' },
     homePeriods: [],  // [{start, end, mode: 'home'|'leave'}], ממוין לפי start
     armyModes: [],    // [{from, mode}], ממוין לפי from
-    templates: defaultTemplates(), // {mode: [{t, min}]}
-    days: {},         // {'YYYY-MM-DD': {done: [task title], hard: bool}}
+    templates: defaultTemplates(), // {mode: [{t, min}]} — בלי אימון וחלבון, אותם fitness.js מוסיף
+    days: {},         // {'YYYY-MM-DD': {done: [task title], hard, w: workout id, exam, extra: []}}
+    records: [],      // [{date, kind, kg?, reps?, sec?, source: 'manual'}] — source מוכן ל-Garmin בעתיד
   };
 }
 
@@ -95,7 +106,19 @@ function isValidBackup(d) {
     && (d.templates === undefined || (isObj(d.templates)
       && Object.values(d.templates).every(l => optArr(l, x => isObj(x) && typeof x.t === 'string' && typeof x.min === 'string'))))
     && (d.days === undefined || (isObj(d.days)
-      && Object.values(d.days).every(x => isObj(x) && optArr(x.done, s => typeof s === 'string'))));
+      && Object.values(d.days).every(x => isObj(x) && optArr(x.done, s => typeof s === 'string')
+        && (x.w === undefined || W_IDS.includes(x.w)) && optArr(x.extra, s => typeof s === 'string'))))
+    && optArr(d.records, r => isObj(r) && isDate(r.date) && KINDS.includes(r.kind)
+      && ['kg', 'reps', 'sec'].every(k => r[k] === undefined || (Number.isFinite(r[k]) && r[k] >= 0)))
+    && (d.settings.height === undefined || Number.isFinite(d.settings.height));
+}
+
+// גרסה 1 -> 2: האימון והחלבון עברו מהתבניות ל-fitness.js
+const OLD_FITNESS_TASKS = ['אימון משקל גוף (אם יש זמן)', 'אימון כוח', 'אימון כוח או ריצה', 'יעד חלבון'];
+function migrate(d) {
+  const templates = { ...d.templates };
+  if (d.schemaVersion < 2) for (const m in templates) templates[m] = templates[m].filter(x => !OLD_FITNESS_TASKS.includes(x.t));
+  return { ...d, templates, schemaVersion: SCHEMA_VERSION };
 }
 
 // מוסיף ברירות מחדל לשדות חדשים, כך שגיבוי ישן עדיין נטען
@@ -109,7 +132,7 @@ function load() {
   if (raw === null) return defaultState();
   try {
     const d = JSON.parse(raw);
-    if (isValidBackup(d)) return withDefaults(d);
+    if (isValidBackup(d)) return withDefaults(migrate(d));
   } catch {}
   localStorage.setItem(KEY + '-broken', raw); // לא מוחקים נתונים פגומים, שומרים עותק בצד
   return defaultState();
@@ -188,10 +211,27 @@ function render() {
 
   fillModes($('mode'), MODES, mode);
   $('hard').setAttribute('aria-pressed', !!day.hard);
-  $('plan').innerHTML = state.templates[mode].map(x => `<li><label>
-      <input type="checkbox" data-task="${esc(x.t)}" ${day.done.includes(x.t) ? 'checked' : ''}>
-      <span>${esc(day.hard ? x.min : x.t)}</span></label></li>`).join('')
-    || `<li class="dim">${t('emptyPlan')}</li>`;
+  const wid = workoutId(date), w = workoutDef(wid, date);
+  const lastWeight = state.records.filter(r => r.kind === 'weight').map(r => r.date).sort().pop();
+  const li = (attr, checked, text, sub = '') => `<li><label><input type="checkbox" ${attr} ${checked ? 'checked' : ''}>
+      <span>${esc(text)}${sub && `<small>${sub}</small>`}</span></label></li>`;
+  $('plan').innerHTML = li(`data-w="${wid}"`, day.w === wid || (wid === 'exam' && day.exam && day.w === 'exam'),
+      day.hard ? w.min : w.t, day.hard ? '' : w.items.map(esc).join('<br>'))
+    + state.templates[mode].map(x => li(`data-task="${esc(x.t)}"`, day.done.includes(x.t), day.hard ? x.min : x.t)).join('')
+    + li('data-task="protein"', day.done.includes('protein'), t('protein')(proteinGrams()))
+    + (isHome(date) && (!lastWeight || lastWeight === date || daysBetween(lastWeight, date) >= 7)
+      ? li('data-weigh', lastWeight === date, t('weighIn')) : '');
+
+  $('exam').setAttribute('aria-pressed', !!day.exam);
+  $('extra').innerHTML = ['basketball', 'volleyball'].map(k =>
+    `<button data-extra="${k}" aria-pressed="${!!day.extra?.includes(k)}">${t(k)}</button>`).join('');
+  $('recButtons').innerHTML = KINDS.map(k => `<button data-rec="${k}">${t(k)}</button>`).join('');
+  $('height').value = state.settings.height ?? '';
+  const pu = latest('pullup');
+  $('estimate').textContent = t('estimate')(Math.round(oneRepMax(latest('bench'))), `${pu.kg}×${pu.reps}`, mmss(latest('run3k').sec));
+  $('recList').innerHTML = state.records.map((r, i) => [r, i]).sort((a, b) => (a[0].date < b[0].date ? 1 : -1)).slice(0, 10)
+    .map(([r, i]) => `<li class="row">${fmt(r.date)} · ${t(r.kind)} ${recordText(r)} <button data-del="${i}">${t('delete')}</button></li>`).join('')
+    || `<li class="dim">${t('none')}</li>`;
 
   $('periods').innerHTML = state.homePeriods.map((p, i) => `<li class="row">
       ${fmt(p.start)} – <input type="date" data-end="${i}" value="${p.end}" min="${p.start}" aria-label="${t('to')}">
@@ -208,9 +248,44 @@ function render() {
 $('mode').onchange = e => { setTodayMode(e.target.value); save(); render(); };
 $('hard').onclick = () => { const d = today(); d.hard = !d.hard; save(); render(); };
 $('plan').onchange = e => {
-  const d = today(), k = e.target.dataset.task;
-  d.done = e.target.checked ? [...d.done, k] : d.done.filter(x => x !== k);
+  const d = today(), { task: k, w } = e.target.dataset, on = e.target.checked;
+  if ('weigh' in e.target.dataset) { if (on) askRecord('weight'); }
+  else if (w) {
+    if (on && w === 'test') ['pullup', 'bench', 'run3k'].forEach(askRecord);
+    if (on) d.w = w; else delete d.w;
+  } else d.done = on ? [...d.done, k] : d.done.filter(x => x !== k);
   save(); render();
+};
+
+// שואל ערך בחלון קטן ושומר הישג. ביטול = לא שומר כלום.
+function askRecord(kind) {
+  const text = prompt(t('ask')[kind]);
+  if (text === null) return;
+  const rec = parseRecord(kind, text);
+  if (!rec) return say(t('badValue'));
+  state.records.push({ date: iso(), kind, ...rec, source: 'manual' });
+}
+
+// --- כושר ---
+$('exam').onclick = () => { const d = today(); d.exam = !d.exam; if (!d.exam && d.w === 'exam') delete d.w; save(); render(); };
+$('extra').onclick = e => {
+  const k = e.target.dataset.extra;
+  if (!k) return;
+  const d = today(), x = d.extra || [];
+  d.extra = x.includes(k) ? x.filter(v => v !== k) : [...x, k];
+  save(); render();
+};
+$('recButtons').onclick = e => { const k = e.target.dataset.rec; if (k) { askRecord(k); save(); render(); } };
+$('recList').onclick = e => {
+  const i = e.target.dataset.del;
+  if (i === undefined || !confirm(t('confirmDelete'))) return;
+  state.records.splice(+i, 1); save(); render();
+};
+$('height').onchange = e => {
+  const v = Number(e.target.value);
+  if (e.target.value && !(v >= 100 && v <= 250)) { say(t('badValue')); return render(); }
+  if (e.target.value) state.settings.height = v; else delete state.settings.height;
+  save(); say(t('saved'));
 };
 
 // --- תאריכי בית ---
@@ -279,7 +354,7 @@ $('importFile').onchange = async e => {
   try { d = JSON.parse(await file.text()); } catch {}
   if (!isValidBackup(d)) return say(t('importBad'));
   if (!confirm(t('importConfirm'))) return;
-  state = withDefaults(d);
+  state = withDefaults(migrate(d));
   save(); render(); showTemplate(); say(t('importOk'));
 };
 

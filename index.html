@@ -25,6 +25,7 @@
   #plan label { display: flex; gap: 12px; align-items: center; padding: 12px 0; }
   #plan input { width: 24px; height: 24px; min-height: 0; accent-color: var(--accent); }
   #plan input:checked + span { color: var(--dim); text-decoration: line-through; }
+  #plan small { display: block; color: var(--dim); font-size: .85rem; margin-top: 4px; }
   details { margin-top: 24px; }
   summary { padding: 12px 0; color: var(--dim); cursor: pointer; }
 </style>
@@ -40,6 +41,32 @@
   <ul id="plan"></ul>
 
   <p id="msg" class="dim" role="status"></p>
+
+  <details>
+    <summary data-t="fitness"></summary>
+    <section>
+      <h2 data-t="today"></h2>
+      <div class="row"><button id="exam" aria-pressed="false" data-t="exam"></button><span id="extra" class="row"></span></div>
+    </section>
+    <section>
+      <h2 data-t="records"></h2>
+      <p id="estimate" class="dim"></p>
+      <div id="recButtons" class="row"></div>
+      <ul id="recList"></ul>
+      <label><span data-t="height"></span> <input type="number" id="height" inputmode="numeric" min="100" max="250"></label>
+    </section>
+    <section>
+      <h2 data-t="rules"></h2>
+      <ul class="dim" lang="he" dir="rtl">
+        <li>כוח יום כן יום לא. יום אחרי כוח: התאוששות, או ריצה כשאתה בבית.</li>
+        <li>בבית: העומסים מחושבים מהמבחן האחרון. כל הסטים עברו בקלות? הוסף 2.5 ק"ג באותו אימון ורשום הישג.</li>
+        <li>משקל גוף: כל הסטים עברו עם 2 חזרות ברזרבה? חזרה אחת יותר בכל סט. ב-12 חזרות עבור לגרסה קשה יותר (גומייה קלה יותר, רגליים מוגבהות).</li>
+        <li>ריצה: מוסיפים חזרה אחת לאינטרוולים בכל פעם, עד 10. אחר כך רצים כל 400 מ' מהר יותר ב-2 שנ'.</li>
+        <li>כאב חד או כאב במפרק (לא עייפות שרירים) = עוצרים.</li>
+        <li>מתיחות אחרי כל אימון, החזקה של 30 שנ' בלי קפיצות.</li>
+      </ul>
+    </section>
+  </details>
 
   <details>
     <summary data-t="settings"></summary>
@@ -85,6 +112,7 @@
     </section>
   </details>
 
+  <script src="fitness.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
