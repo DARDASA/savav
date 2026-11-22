@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>סבב</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root { color-scheme: dark; --bg: #111; --fg: #eee; --dim: #888; --line: #2a2a2a; }
+  * { box-sizing: border-box; }
+  body { margin: 0 auto; max-width: 560px; padding: 16px; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+  header { display: flex; justify-content: space-between; align-items: baseline; }
+  h1 { margin: 0; font-size: 1.4rem; }
+  h2 { font-size: 1.1rem; }
+  section { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 8px; }
+  .dim { color: var(--dim); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { min-height: 44px; padding: 8px 14px; background: none; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+</style>
+</head>
+<body>
+  <header><h1 data-t="appName"></h1><span id="today" class="dim"></span></header>
+
+  <section id="plan"><p class="dim" data-t="planSoon"></p></section>
+
+  <section>
+    <h2 data-t="settings"></h2>
+    <div class="row">
+      <button id="lang"></button>
+      <button id="export" data-t="export"></button>
+      <button id="importBtn" data-t="import"></button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <p id="msg" class="dim" role="status"></p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
